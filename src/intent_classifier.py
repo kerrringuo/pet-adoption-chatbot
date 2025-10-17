@@ -9,7 +9,6 @@ class IntentClassifier:
     def __init__(self, model_path=None):
         """Load the intent classifier and supporting metadata."""
 
-        # Resolve model path dynamically (works in any environment)
         if model_path is None:
             base_dir = os.path.dirname(os.path.abspath(__file__))
             model_dir = os.path.join(base_dir, "../models/intent")

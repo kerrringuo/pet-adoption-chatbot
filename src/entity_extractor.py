@@ -1,4 +1,3 @@
-# src/entity_extractor.py
 import os
 from transformers import pipeline
 from synonyms import SYNONYMS, canonicalize, postprocess_entities

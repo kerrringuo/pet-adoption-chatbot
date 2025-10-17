@@ -37,6 +37,7 @@ requirements.txt
 
 The NER model is hosted on [Hugging Face Hub](https://huggingface.co/kerrringuo/pet-adoption-ner).
 The chatbot automatically loads the model at runtime using the Transformers pipeline.
+The NER model will automatically be downloaded from Hugging Face when you first run the chatbot.
 
 ---
 

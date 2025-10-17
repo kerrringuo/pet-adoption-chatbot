@@ -70,11 +70,6 @@ class ChatbotPipeline:
             self.session["greeted"] = True
             return "Hello again! 👋 How can I help you today?"
 
-        # # --- First-time greeting ---
-        # if not self.session["greeted"]:
-        #     self.session["greeted"] = True
-        #     return self._get_greeting()
-
         # --- Intent classification ---
         intent, conf = self.intent_clf.predict(user_input)
 

@@ -1,7 +1,9 @@
 from intent_classifier import IntentClassifier
 from entity_extractor import EntityExtractor
-from rapidfuzz import process
 from synonyms import SYNONYMS, canonicalize
+from responses import get_response
+
+from rapidfuzz import process
 from transformers.utils import logging as hf_logging
 import warnings, re
 
@@ -13,7 +15,6 @@ hf_logging.set_verbosity_error()
 # Required and optional entities for pet search
 REQUIRED_ENTITIES = ["PET_TYPE", "STATE"]
 OPTIONAL_ENTITIES = ["BREED", "COLOR", "SIZE", "GENDER", "AGE", "FURLENGTH"]
-
 
 # ---------------------------------------------------------------------------
 # AUTOCORRECT
@@ -36,7 +37,6 @@ def autocorrect_text(text, known_words=None, threshold=80):
         match, score, _ = process.extractOne(w, known_words)
         corrected.append(match if score >= threshold and match.lower() != w.lower() else w)
     return " ".join(corrected)
-
 
 # ---------------------------------------------------------------------------
 # CHATBOT PIPELINE
@@ -68,7 +68,7 @@ class ChatbotPipeline:
             return "Alright 😊 Let me know anytime if you change your mind."
         if lower in ["hi", "hey", "hello"]:
             self.session["greeted"] = True
-            return "Hello again! 👋 How can I help you today?"
+            return get_response("greeting")
 
         # --- Intent classification ---
         intent, conf = self.intent_clf.predict(user_input)
@@ -80,22 +80,6 @@ class ChatbotPipeline:
                 g in lower for g in greeting_words
             ):
                 intent = "unknown"
-
-
-        # # --- Context-aware intent override ---
-        # pet_context = self.session.get("intent") == "find_pet"
-        # color_keywords = ["black","white","brown","golden","cream","gray","orange",
-        #                 "yellow","blue","red","tabby","calico","tortoiseshell"]
-        # size_keywords = ["small","medium","large","tiny","big"]
-        # gender_keywords = ["male","female","boy","girl"]
-
-        # if pet_context:
-        #     # Force descriptive follow-ups to remain in find_pet
-        #     if any(w in lower for w in color_keywords + size_keywords + gender_keywords):
-        #         intent = "find_pet"
-        #     # Also treat low-confidence "other" as continuation
-        #     elif intent == "other" and conf < 0.7:
-        #         intent = "find_pet"
 
         # --- Maintain find_pet context for short follow-ups (color/size/gender/state) ---
         if self.session.get("intent") == "find_pet":
@@ -124,20 +108,17 @@ class ChatbotPipeline:
         if intent == "find_pet":
             return self._handle_find_pet(user_input)
         if intent == "pet_care":
+            # RAG PLACEHOLDER
             return "(RAG) 🧠 Fetching pet care advice... (placeholder)"
         if intent == "thank_you":
-            return "You're most welcome! 😊 Anything else you'd like to ask?"
+            return get_response("thank_you")
         if intent == "greeting":
-            return "Hello again! 👋 How can I help you today?"
+            return get_response("greeting")
         if intent == "goodbye":
-            return "Goodbye! 👋 Hope you find your perfect furry friend 🐶🐱"
+            return get_response("goodbye")
 
         # --- Default fallback ---
-        return (
-            "I'm not sure I understood. 🤔 "
-            "You can say 'I want to adopt a cat in Penang' or 'How to care for a puppy?'."
-        )
-
+        return get_response("unknown")
 
     # -----------------------------------------------------------------------
     # FIND-PET HANDLER
@@ -188,10 +169,7 @@ class ChatbotPipeline:
             )
 
         # Generic fallback
-        return (
-            "I'm not sure I understood. 🤔 "
-            "You can say 'I want to adopt a cat in Penang' or 'How to care for a puppy?'."
-        )
+        return get_response("unknown")
 
     # -----------------------------------------------------------------------
     # ENTITY EXTRACTION & VALIDATION
@@ -215,9 +193,9 @@ class ChatbotPipeline:
 
         # --- Basic sanity checks ---
         if not text.strip() or len(text.strip()) < 2:
-            return {"NOTICE": "Hmm, I didn’t quite catch that. Could you try again?"}
+            return {"NOTICE": get_response("unknown")}
         if len(text) > 4 and not any(ch in "aeiou" for ch in text.lower()):
-            return {"NOTICE": "Hmm, I didn’t quite catch that. Could you try again?"}
+            return {"NOTICE": get_response("unknown")}
 
         # --- Remove placeholders / irrelevant tokens ---
         if "PET_TYPE" in ents and ents["PET_TYPE"].lower() in ["one", "it", "animal", "pet"]:
@@ -282,7 +260,7 @@ class ChatbotPipeline:
 
         # --- No meaningful entities detected ---
         if not ents:
-            return {"NOTICE": "Hmm, I didn’t quite catch that. Could you try again?"}
+            return {"NOTICE": get_response("unknown")}
 
         return ents
 
@@ -392,7 +370,7 @@ if __name__ == "__main__":
     print("Bot:", bot.handle_message(""))
     while True:
         msg = input("You: ")
-        if msg.lower() in ["exit", "quit", "bye", "goodbye", "stop", "end"]:
+        if msg.lower() in ["exit", "quit", "end"]:
             print("Bot: Goodbye! 👋")
             break
         if msg.lower() in ["restart", "reset", "new chat"]:

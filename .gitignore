@@ -1,0 +1,24 @@
+# --- Environment & Cache ---
+venv/
+.venv/
+__pycache__/
+*.pyc
+
+# --- OS / Editor files ---
+.DS_Store
+Thumbs.db
+.vscode/
+
+# --- Optional training outputs (safe to exclude) ---
+training_args.bin
+training_log_history.csv
+validation_metrics.csv
+*.bin
+*.pt
+*.h5
+*.ckpt
+
+# --- Temporary folders ---
+logs/
+tmp/
+cache/

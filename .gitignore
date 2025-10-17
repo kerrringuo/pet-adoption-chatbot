@@ -22,3 +22,5 @@ validation_metrics.csv
 logs/
 tmp/
 cache/
+
+models/ner/model.safetensors

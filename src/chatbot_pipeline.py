@@ -18,7 +18,7 @@ OPTIONAL_ENTITIES = ["BREED", "COLOR", "SIZE", "GENDER", "AGE", "FURLENGTH"]
 # ---------------------------------------------------------------------------
 # AUTOCORRECT
 # ---------------------------------------------------------------------------
-def autocorrect_text(text, known_words=None, threshold=85):
+def autocorrect_text(text, known_words=None, threshold=80):
     """Light typo correction for meaningful words only."""
     if known_words is None:
         known_words = [
@@ -30,7 +30,7 @@ def autocorrect_text(text, known_words=None, threshold=85):
         ]
     words, corrected = text.split(), []
     for w in words:
-        if len(w) <= 3:  # skip very short tokens
+        if len(w) <= 2:  # skip very short tokens
             corrected.append(w)
             continue
         match, score, _ = process.extractOne(w, known_words)
@@ -73,6 +73,36 @@ class ChatbotPipeline:
         # --- Intent classification ---
         intent, conf = self.intent_clf.predict(user_input)
 
+        # --- Fix false greeting classification ---
+        greeting_words = ["hi", "hey", "hello"]
+        if intent == "greeting":
+            if lower not in greeting_words and len(user_input.split()) <= 2 and not any(
+                g in lower for g in greeting_words
+            ):
+                intent = "unknown"
+
+
+        # # --- Context-aware intent override ---
+        # pet_context = self.session.get("intent") == "find_pet"
+        # color_keywords = ["black","white","brown","golden","cream","gray","orange",
+        #                 "yellow","blue","red","tabby","calico","tortoiseshell"]
+        # size_keywords = ["small","medium","large","tiny","big"]
+        # gender_keywords = ["male","female","boy","girl"]
+
+        # if pet_context:
+        #     # Force descriptive follow-ups to remain in find_pet
+        #     if any(w in lower for w in color_keywords + size_keywords + gender_keywords):
+        #         intent = "find_pet"
+        #     # Also treat low-confidence "other" as continuation
+        #     elif intent == "other" and conf < 0.7:
+        #         intent = "find_pet"
+
+        # --- Maintain find_pet context for short follow-ups (color/size/gender/state) ---
+        if self.session.get("intent") == "find_pet":
+            if len(user_input.split()) <= 2 and len(user_input) > 2 and intent in ["unknown", "other"]:
+                intent = "find_pet"
+
+        # --- Initial greeting check ---
         if not self.session["greeted"]:
             self.session["greeted"] = True
             if intent == "greeting":
@@ -94,7 +124,6 @@ class ChatbotPipeline:
         if intent == "find_pet":
             return self._handle_find_pet(user_input)
         if intent == "pet_care":
-            # RAG INTEGRATION PLACEHOLDER
             return "(RAG) 🧠 Fetching pet care advice... (placeholder)"
         if intent == "thank_you":
             return "You're most welcome! 😊 Anything else you'd like to ask?"
@@ -109,34 +138,33 @@ class ChatbotPipeline:
             "You can say 'I want to adopt a cat in Penang' or 'How to care for a puppy?'."
         )
 
+
     # -----------------------------------------------------------------------
     # FIND-PET HANDLER
     # -----------------------------------------------------------------------
     def _handle_find_pet(self, user_input: str) -> str:
         ents = self._extract_entities(user_input)
+
         if "NOTICE" in ents:
             return ents["NOTICE"]
-        if ents:
-            return self._update_entities_and_respond(ents)
 
-        missing = [e for e in REQUIRED_ENTITIES if e not in self.session["entities"]]
-        return self.ask_for(missing[0]) if missing else self._confirm_and_search()
-
+        return self._update_entities_and_respond(ents)
+    
     # -----------------------------------------------------------------------
     # UNKNOWN / LOW-CONFIDENCE HANDLER
     # -----------------------------------------------------------------------
     def _handle_unknown(self, user_input: str) -> str:
         """Handles unclear or nonsense inputs gracefully."""
+
         if self.session.get("intent") == "find_pet":
-            if len(user_input.split()) <= 2:
+                
+            if len(user_input) > 2 and len(user_input.split()) <= 2:
                 token = user_input.strip()
-                # Only wrap descriptive words, not short codes
-                if len(token.split()) == 1 and len(token) > 2:
-                    pseudo = f"I want a {token} {self.session['entities'].get('PET_TYPE', 'pet')}"
-                    ents = self._extract_entities(pseudo)
-                else:
+                pseudo = f"I want a {token} {self.session['entities'].get('PET_TYPE', 'pet')}"
+                ents = self._extract_entities(pseudo)
+                if not ents or "NOTICE" in ents:
                     ents = self._extract_entities(user_input)
-                if ents:
+                if ents and "NOTICE" not in ents:
                     return self._update_entities_and_respond(ents)
 
             # Second try, direct extraction
@@ -220,11 +248,6 @@ class ChatbotPipeline:
             ):
                 ents.pop("BREED")
 
-        # --- Drop short nonsense tokens ---
-        for k, v in list(ents.items()):
-            if len(v) < 3 or not any(ch in "aeiou" for ch in v.lower()):
-                ents.pop(k)
-
         # --- Color keyword fallback using synonym map ---
         color_variants = []
         for canon, variants in SYNONYMS.items():
@@ -234,11 +257,28 @@ class ChatbotPipeline:
             ]:
                 color_variants.extend([canon.lower()] + [v.lower() for v in variants])
 
-        tokens = re.findall(r"\b[a-zA-Z]+\b", text.lower())
-        for word in tokens:
-            if word in color_variants and "COLOR" not in ents:
-                ents["COLOR"] = canonicalize(word)
+        # Normalize text for color matching
+        lower_text = autocorrect_text(text.lower())
+        for color in color_variants:
+            if re.search(rf"\b{re.escape(color)}\b", lower_text) or \
+            re.search(rf"\b{re.escape(color)}\s*(color|colour)\b", lower_text) or \
+            re.search(rf"\b(color|colour)\s*{re.escape(color)}\b", lower_text):
+                ents["COLOR"] = canonicalize(color)
                 break
+
+        # --- drop total nonsense ---
+        for k, v in list(ents.items()):
+            if len(v) < 3 or not any(ch in "aeiou" for ch in v.lower()):
+                ents.pop(k)
+
+        # --- Prevent duplicate values across different entity types ---
+        vals_seen = {}
+        for k, v in list(ents.items()):
+            v_low = v.lower().strip()
+            if v_low in vals_seen.values():
+                ents.pop(k)
+            else:
+                vals_seen[k] = v_low
 
         # --- No meaningful entities detected ---
         if not ents:
@@ -268,6 +308,10 @@ class ChatbotPipeline:
         for k, v in ents.items():
             if k in ["PET_TYPE", "NOTICE"]:
                 continue
+
+            v = canonicalize(v)
+            v = autocorrect_text(v)
+
             prev = self.session["entities"].get(k)
             readable = k.replace("_", " ").lower()
             if prev and prev != v:
@@ -276,7 +320,13 @@ class ChatbotPipeline:
                 confirm.append(f"Added {readable}: {v}.")
             self.session["entities"][k] = v
 
-        missing = [e for e in REQUIRED_ENTITIES if e not in self.session["entities"]]
+        required_entities = REQUIRED_ENTITIES.copy()
+        if "BREED" in self.session["entities"] or "BREED" in ents:
+            if "PET_TYPE" in required_entities:
+                required_entities.remove("PET_TYPE")
+
+        missing = [e for e in required_entities if e not in self.session["entities"]]
+
         msg = " ".join(confirm)
         return f"{msg} {self.ask_for(missing[0])}" if missing else f"{msg} {self._confirm_and_search()}"
 

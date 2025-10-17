@@ -15,27 +15,37 @@ It supports conversational refinement — users can specify breed, color, and lo
 ---
 
 ## Project Structure
+
+```plaintext
 src/
-├── chatbot_pipeline.py # Main chatbot logic and conversation flow
-├── intent_classifier.py # Intent classification (MiniLM + Logistic Regression)
-├── entity_extractor.py # NER model for breed, color, state, age, etc.
-├── synonyms.py # Synonym mapping and canonicalization
-├── models/
-│ ├── ner/ # Fine-tuned DistilBERT NER model
-│ └── intent/ # Trained intent classifier + vectorizer
+├── chatbot_pipeline.py      # Main chatbot logic and conversation flow
+├── intent_classifier.py     # Intent classification (MiniLM + Logistic Regression)
+├── entity_extractor.py      # NER for breed, color, state, age, etc.
+├── synonyms.py              # Synonym mapping and canonicalization
+
+models/
+├── ner/                     # Fine-tuned DistilBERT NER model (weights hosted externally)
+└── intent/                  # Trained intent classifier + vectorizer
+
+README.md
+requirements.txt
+```
+
+
 
 ---
 
 ## Setup
 
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/<your-username>/pet-adoption-chatbot.git
-   cd pet-adoption-chatbot/src
+```bash
+git clone https://github.com/<your-username>/pet-adoption-chatbot.git
+cd pet-adoption-chatbot/src
 
-   pip install -r requirements.txt
+pip install -r requirements.txt
 
-   python chatbot_pipeline.py
+python chatbot_pipeline.py
+```
+
 
 ---
 
@@ -63,15 +73,26 @@ Stores trained model files. These load automatically when the chatbot starts.
 ## Example Conversation
 
 Bot: Hello! 👋 I can help you find cats 🐱 or dogs 🐶 for adoption, or answer pet care questions.
+
 You: hi i want a dog
+
 Bot: Which state or area are you in? 🏙️
+
 You: kl
+
 Bot: Added state: Kuala Lumpur. Got it! Searching for dogs in Kuala Lumpur...
+
 You: golden one
 Bot: Added color: golden. Got it! Searching for golden dogs in Kuala Lumpur...
+
 You: actually change to cat
+
 Bot: Okay, updated pet type to cat. Got it! Searching for golden cats in Kuala Lumpur...
+
 You: thanks
+
 Bot: You're most welcome! 😊 Anything else you'd like to ask?
+
 You: bye
+
 Bot: Goodbye! 👋

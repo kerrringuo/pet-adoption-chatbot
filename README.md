@@ -89,6 +89,7 @@ You: kl
 Bot: Added state: Kuala Lumpur. Got it! Searching for dogs in Kuala Lumpur...
 
 You: golden one
+
 Bot: Added color: golden. Got it! Searching for golden dogs in Kuala Lumpur...
 
 You: actually change to cat

@@ -24,14 +24,19 @@ src/
 ├── synonyms.py              # Synonym mapping and canonicalization
 
 models/
-├── ner/                     # Fine-tuned DistilBERT NER model (weights hosted externally)
+├── ner/                     # Fine-tuned NER model (hosted on Hugging Face)
 └── intent/                  # Trained intent classifier + vectorizer
 
 README.md
 requirements.txt
 ```
 
+---
 
+## Model Hosting
+
+The NER model is hosted on [Hugging Face Hub](https://huggingface.co/kerrringuo/pet-adoption-ner).
+The chatbot automatically loads the model at runtime using the Transformers pipeline.
 
 ---
 

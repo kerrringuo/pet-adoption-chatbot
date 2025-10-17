@@ -4,20 +4,16 @@ from transformers import pipeline
 from synonyms import SYNONYMS, canonicalize, postprocess_entities
 
 class EntityExtractor:
-    def __init__(self, model_dir="../models/ner"):
-        """Load fine-tuned NER transformer."""
-        if not os.path.exists(model_dir):
-            raise FileNotFoundError(f"NER model folder missing: {model_dir}")
+    def __init__(self, model_repo="kerrringuo/pet-adoption-ner"):
+        """Load fine-tuned NER transformer directly from Hugging Face Hub"""
 
         # Load the NER model
         self.ner_pipe = pipeline(
             "ner",
-            model=model_dir,
-            tokenizer=model_dir,
+            model=model_repo,
+            tokenizer=model_repo,
             aggregation_strategy="simple"
         )
-
-    from synonyms import SYNONYMS, canonicalize, postprocess_entities
 
     def extract(self, text):
         """Return dict of canonicalized entity_name: value."""

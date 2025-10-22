@@ -123,13 +123,21 @@ class ChatbotPipeline:
     # -----------------------------------------------------------------------
     # FIND-PET HANDLER
     # -----------------------------------------------------------------------
+    
     def _handle_find_pet(self, user_input: str) -> str:
         ents = self._extract_entities(user_input)
 
         if "NOTICE" in ents:
+            if "pet" in user_input.lower():
+                return (
+                    "Got it! You're looking to adopt a pet. "
+                    "Could you tell me what kind of pet and which state you're in? "
+                    "For example: 'a dog in Johor' or 'a cat in Penang'."
+                )
             return ents["NOTICE"]
 
         return self._update_entities_and_respond(ents)
+
     
     # -----------------------------------------------------------------------
     # UNKNOWN / LOW-CONFIDENCE HANDLER

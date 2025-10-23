@@ -269,9 +269,13 @@ class ChatbotPipeline:
         # --- No meaningful entities detected ---
         if not ents:
             return {"NOTICE": get_response("unknown")}
+        
+        # -- Remove redundant color if it's part of breed name ---
+        if "BREED" in ents and "COLOR" in ents:
+            if ents["COLOR"].lower() in ents["BREED"].lower():
+                ents.pop("COLOR")
 
         return ents
-
 
     # -----------------------------------------------------------------------
     # UPDATE SESSION + RESPOND
